@@ -15,41 +15,137 @@ const Client_Secret = "d85737bc73c84b598cfb25bb51c15378";
 // making a buffer with client id and secret to send to Spotify in order to get authorization token back
 const auth_token = Buffer.from(`${Client_ID}:${Client_Secret}`, 'utf-8').toString('base64');
 
+// The maximum is exclusive and the minimum is inclusive
+    // See docs here: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+function getRandomInt(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min);
+}
+
+ //make post request to SPOTIFY API for access token, sending relavent info
+ const token_url = 'https://accounts.spotify.com/api/token';
+      
+ // use qs to send credentials in secure way
+ const data = qs.stringify({'grant_type':'client_credentials'});
+
 
 const gameController = {};
 
-gameController.getOptions = async(req, res, next) => {
-    try{
-          //make post request to SPOTIFY API for access token, sending relavent info
-          const token_url = 'https://accounts.spotify.com/api/token';
-      
-          // use qs to send credentials in secure way
-          const data = qs.stringify({'grant_type':'client_credentials'});
-      
-          // making request to get back authorization token
-          const response = await axios.post(token_url, data, {
-            headers: { 
-              'Authorization': `Basic ${auth_token}`,
-              'Content-Type': 'application/x-www-form-urlencoded' 
-            }
-          })
-          
-        const authToken = await response.data.access_token;
-        const songs = await axios({
-          method: 'get',
-          url: "https://api.spotify.com/v1/recommendations?limit=50&market=US&seed_genres=pop,rock&min_popularity=50",
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-        console.log(songs.data.tracks[0].preview_url);
-        console.log(authToken);
-      
-    } catch(error){
-        console.log(error);
-        next();
-    }
+gameController.getArtistId = async(req, res, next) => {
+  console.log('firstController');
+  try{
+     // making request to get back authorization token
+    const response = await axios.post(token_url, data, {
+      headers: { 
+        'Authorization': `Basic ${auth_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded' 
+      }
+    });
+
+    // authorization token
+    const authToken = await response.data.access_token;
+
+    // list of genres we use to look for the song
+    const userGenres = [
+      "punk", "metal", "rock", "pop", "indie", "grunge", 
+      "hip-hop", "electronic", "alternative", "blues"];
+    
+    // randomly choosing genre from the array
+    const genre = userGenres[getRandomInt(0, userGenres.length)];
+    
+    // making request to get list of songs, recommended in the searched genre  
+    const songs = await axios({
+      method: 'get',
+      url: `https://api.spotify.com/v1/recommendations?limit=50&market=US&seed_genres=${genre}&min_popularity=50`,
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+    });
+
+    // get the first random artist
+    const firstArtist = songs.data.tracks[getRandomInt(0, 50)].artists[0];
+    res.locals.firstArtist = firstArtist;
+    res.locals.token = authToken;
+  } catch(error){
     next();
+  }
+    next();
+}
+
+gameController.getArtistOptions = async(req, res, next) => {
+  console.log('secondController');
+  const firstArtist = res.locals.firstArtist;
+  const token = res.locals.token;
+  try {
+    const data = await axios({
+      method: 'get',
+      url: `https://api.spotify.com/v1/artists/${firstArtist.id}/related-artists?min_popularity=50`,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+    });
+    const arrOfOptions = data.data.artists.sort((a, b) => b.popularity - a.popularity);
+    const arrOfArtists = [firstArtist];
+    const listOfIds = [firstArtist.id]
+    let counter = 0;
+    while (arrOfArtists.length < 4 && counter < arrOfOptions.length) {
+      if (!listOfIds.includes(arrOfOptions[counter].id)) {
+        arrOfArtists.push(arrOfOptions[counter]);
+        listOfIds.push(arrOfOptions[counter].id)
+      };
+      counter++;
+    }
+    res.locals.ids = listOfIds;
+    res.locals.arr = arrOfArtists;
+  } catch(err) {
+    next(err);
+  }
+  next();
+}
+
+gameController.getTrack = async(req, res, next) => {
+  console.log('thirdController');
+  const listOfIds = res.locals.ids;
+  const arrOfArtists = res.locals.arr;
+  const token = res.locals.token;
+
+  // randomly choosing artist from our array of artists
+  // we don't want to choose just the first one - often they might be the most popular one
+  const artistId = listOfIds[getRandomInt(0, 4)];
+  let artist = {};
+
+  for (let i = 0; i < 4; i++) {
+    if (arrOfArtists[i].id === artistId) {
+      artist = arrOfArtists[i];
+      break;
+    }
+  }
+
+  let tracks = await axios({
+    method: 'get',
+    url: `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US&limit=10`,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+  });
+  
+  // choosing random track among 10 returned
+  tracks = tracks.data.tracks;
+  let i = getRandomInt(0, tracks.length);
+  while (!tracks[i].preview_url) {
+    i = getRandomInt(0, tracks.length);
+  }
+
+  const track = tracks[i];
+  const winner = {
+    trackUrl: track.preview_url,
+    nameOfSong: track.name,
+    artist: artist
+  }
+
+  res.locals.winner = winner;
+  next();
 }
 
 module.exports = gameController;
