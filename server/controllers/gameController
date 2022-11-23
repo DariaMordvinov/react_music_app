@@ -5,8 +5,8 @@ const qs = require('qs');
 const SpotifyWebApi = require('spotify-web-api-node');
 const spotifyApi = new SpotifyWebApi();
 
-const Client_ID = "5401259605184f6f8dc49400a84ed63c";
-const Client_Secret = "d85737bc73c84b598cfb25bb51c15378";
+const Client_ID = "secret";
+const Client_Secret = "secret";
 
 // authorization with Spotify API
 // read docs here: https://developer.spotify.com/documentation/general/guides/authorization/client-credentials/
@@ -33,7 +33,6 @@ function getRandomInt(min, max) {
 const gameController = {};
 
 gameController.getArtistId = async(req, res, next) => {
-  console.log('firstController');
   try{
      // making request to get back authorization token
     const response = await axios.post(token_url, data, {
@@ -64,23 +63,30 @@ gameController.getArtistId = async(req, res, next) => {
     });
 
     // get the first random artist
-    const firstArtist = songs.data.tracks[getRandomInt(0, 50)].artists[0];
-    res.locals.firstArtist = firstArtist;
+    let firstId= songs.data.tracks[getRandomInt(0, 50)].artists[0].id;
+    const firstArtist = await axios({
+      method: 'get',
+      url: `https://api.spotify.com/v1/artists/${firstId}`,
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+    });
+
+    res.locals.firstArtist = firstArtist.data;
     res.locals.token = authToken;
   } catch(error){
     next();
   }
-    next();
+  next();
 }
 
 gameController.getArtistOptions = async(req, res, next) => {
-  console.log('secondController');
   const firstArtist = res.locals.firstArtist;
   const token = res.locals.token;
   try {
     const data = await axios({
       method: 'get',
-      url: `https://api.spotify.com/v1/artists/${firstArtist.id}/related-artists?min_popularity=50`,
+      url: `https://api.spotify.com/v1/artists/${firstArtist.id}/related-artists?min_popularity=50&limit=10`,
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -90,14 +96,25 @@ gameController.getArtistOptions = async(req, res, next) => {
     const listOfIds = [firstArtist.id]
     let counter = 0;
     while (arrOfArtists.length < 4 && counter < arrOfOptions.length) {
-      if (!listOfIds.includes(arrOfOptions[counter].id)) {
+      if (!listOfIds.includes(arrOfOptions[counter].id) &&
+      arrOfOptions[counter].images != undefined) {
         arrOfArtists.push(arrOfOptions[counter]);
         listOfIds.push(arrOfOptions[counter].id)
       };
       counter++;
     }
     res.locals.ids = listOfIds;
-    res.locals.arr = arrOfArtists;
+
+    const finalArtistsData = [];
+    arrOfArtists.forEach(art => {
+      const artist = {};
+      artist.id = art.id;
+      artist.name = art.name;
+      artist.image = art.images[0].url;
+      finalArtistsData.push(artist);
+    })
+
+    res.locals.arr = finalArtistsData;
   } catch(err) {
     next(err);
   }
@@ -105,7 +122,6 @@ gameController.getArtistOptions = async(req, res, next) => {
 }
 
 gameController.getTrack = async(req, res, next) => {
-  console.log('thirdController');
   const listOfIds = res.locals.ids;
   const arrOfArtists = res.locals.arr;
   const token = res.locals.token;
@@ -113,14 +129,6 @@ gameController.getTrack = async(req, res, next) => {
   // randomly choosing artist from our array of artists
   // we don't want to choose just the first one - often they might be the most popular one
   const artistId = listOfIds[getRandomInt(0, 4)];
-  let artist = {};
-
-  for (let i = 0; i < 4; i++) {
-    if (arrOfArtists[i].id === artistId) {
-      artist = arrOfArtists[i];
-      break;
-    }
-  }
 
   let tracks = await axios({
     method: 'get',
@@ -141,7 +149,13 @@ gameController.getTrack = async(req, res, next) => {
   const winner = {
     trackUrl: track.preview_url,
     nameOfSong: track.name,
-    artist: artist
+    artist: artistId
+  }
+
+  for (let i = 0; i < arrOfArtists.length; i++) {
+    if (winner.artist === arrOfArtists[i].id) {
+      winner.name = arrOfArtists[i].name;
+    }
   }
 
   res.locals.winner = winner;
