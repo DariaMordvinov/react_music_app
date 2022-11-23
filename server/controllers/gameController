@@ -5,8 +5,8 @@ const qs = require('qs');
 const SpotifyWebApi = require('spotify-web-api-node');
 const spotifyApi = new SpotifyWebApi();
 
-const Client_ID = "5401259605184f6f8dc49400a84ed63c";
-const Client_Secret = "d85737bc73c84b598cfb25bb51c15378";
+const Client_ID = "your id";
+const Client_Secret = "your secret";
 
 // authorization with Spotify API
 // read docs here: https://developer.spotify.com/documentation/general/guides/authorization/client-credentials/
