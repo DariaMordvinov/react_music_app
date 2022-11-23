@@ -2,11 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { render } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import css from "./styles.css";
+import ArtistContainer from './components/artistContainer.jsx';
+import Results from './components/results.jsx';
 
 const App = (props) => {
     const [artists, setArtists] = useState([]);
     const [winner, setWinner] = useState({});
     const [round, setRound] = useState({played: false, won: false});
+    const [newGame, setGame] = useState(0);
+
 
     useEffect(() => {
         async function fetchData() {
@@ -16,7 +20,13 @@ const App = (props) => {
             setWinner(winner);
         }
         fetchData();
-    }, []);
+    }, [newGame]);
+
+    function handleNewGame() {
+        const updatedGame = newGame + 1;
+        setGame(updatedGame);
+        setRound({played: false, won: false});
+    }
 
     function handleClick(id) {
         // check if the winning option was clicked
@@ -31,35 +41,12 @@ const App = (props) => {
         <main className='container'>
             <h1>Spotifyer</h1>
             <audio src={winner.trackUrl} controls></audio>
-            {round.played && round.won && 
-               <div className='results'>
-                 <h2>Congrats! You guessed right.</h2>
-                 <button onClick={() => {
-                    window.location.reload();
-                }}>Play again</button>
-               </div>
+            {round.played &&
+                <Results handleNewGame={handleNewGame} winner={winner} round={round} />
             }
-            {round.played && !round.won && 
-                <div className='results'>
-                  <h2>You are wrong. This is the song by {winner.name}. It's called {winner.nameOfSong}, dummy</h2>
-                  <button onClick={() => {
-                    window.location.reload();
-                }} >Play again</button>
-                </div>
-            }
-            <div className='artists-container'>
-            {artists.map(ar => 
-                <div className='artist' key={ar.id}>
-                    <div className='img-wrapper'>
-                        <img 
-                          onClick={() => handleClick(ar.id)}
-                          src={ar.image} 
-                        />
-                    </div>
-                    <p>{ar.name}</p>
-                </div>
-            )}
-            </div>
+            {!round.played && <ArtistContainer 
+                                artists={artists} 
+                                handleClick={handleClick} />}
         </main>
     )
 }

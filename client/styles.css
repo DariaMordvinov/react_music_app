@@ -3,8 +3,9 @@
 }
 
 body {
-    background-image: linear-gradient(to right, #09C6F9, #045DE9 60%, #09C6F9);
+    background-image: linear-gradient(50deg, #09C6F9, #045DE9);
     color: rgb(230, 230, 230);
+    height: 100vh;
 }
 
 .container {
@@ -64,4 +65,40 @@ audio:hover {
 .img-wrapper img {
     width: 230px;
     height: auto;
+    opacity: 80%;
+}
+
+.img-wrapper img:hover {
+    opacity: 100%;
+    cursor: pointer;
+}
+
+
+.results {
+    width: 480px;
+    margin-top: 20px;
+    text-align: center;
+    font-family: 'Josefin Sans', sans-serif;
+    letter-spacing: 1.6px;
+    background-color:rgba(220, 220, 220, 0.5);
+    padding: 30px 10px;
+    border: 1px solid black;
+    box-shadow: 12px 12px 2px 1px rgba(0, 0, 255, .2);
+}
+
+.results button {
+    width: 170px;
+    border: none;
+    border-radius: 20px;
+    height: 55px;
+    margin-top: 10px;
+    color: #045DE9;
+    font-family: 'Permanent Marker', cursive;
+    font-weight: 400;
+    font-size: 25px;
+}
+
+.results button:hover {
+    background-color: rgb(220, 220, 220);
+    cursor: pointer;
 }
