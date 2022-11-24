@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+require('dotenv').config();
 
 const gameController = require('./controllers/gameController');
 const bodyParser = require("body-parser");
@@ -9,6 +10,7 @@ const PORT = 8080;
 
 app.use(express.json());
 app.use(bodyParser.json());
+app.use(express.static('client'))
 
 app.use('/', 
   gameController.getArtistId, 
